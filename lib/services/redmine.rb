@@ -5,14 +5,21 @@ class Service::Redmine < Service::Base
                              'You must also "Enable REST web service" in ' \
                              'Admin > Settings > Auth.<br><br>' \
                              'Tip: Create a Crashlytics user for easier sorting.'
+  string :tracker_id, :placeholder => "0", :label => 'Issue tracker ID<br>' \
+                                                     '(use 0 if there is only one issue type)'
 
   page "Project", [ :project_url ]
   page "API Key", [ :api_key ]
+  page "Tracker", [ :tracker_id ]
 
   # Create an issue on Redmine
   def receive_issue_impact_change(config, payload)
     parsed = parse_url config[:project_url]
     project_id      = parsed[:project_id]
+    tracker_id      = parsed[:tracker_id]
+    if tracker_id.nil?
+      tracker_id = 0
+    end
     http.basic_auth   parsed[:user], parsed[:password] if parsed[:user] || parsed[:password]
 
     users_text = if payload[:impacted_devices_count] == 1
@@ -37,6 +44,7 @@ class Service::Redmine < Service::Base
       :issue => {
         :subject     => payload[:title] + " [Crashlytics]",
         :project_id  => project_id,
+        :tracker_id  => tracker_id,
         :description => issue_body } }
 
     path = parsed[:url_prefix] + "/issues.json"
